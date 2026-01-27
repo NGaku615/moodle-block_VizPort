@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ダミー可視化シェル</title>
+    <style>
+        .viz-wrapper {
+            border: 1px solid #ccc;
+            padding: 12px;
+            margin-bottom: 18px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Dummy Visualization Shell</h1>
+    <p>dummy_js の可視化ユニットを読み込み、//@id と同じ id の div を自動生成します。</p>
+
+    <div id="root"></div>
+
+    <script>
+        /* ==========================================================
+           dummy_js フォルダから可視化ユニット JS を読み込む
+           ========================================================== */
+        async function loadVisualizationScript(filename) {
+            const res = await fetch(`dummy_js/${filename}`);
+            if (!res.ok) {
+                throw new Error(`failed to load ${filename}: ${res.status}`);
+            }
+            return res.text();
+        }
+
+        /* ==========================================================
+           メタコメント（//@id xxx, //@label yyy）を抽出
+           ========================================================== */
+        function extractMetaInfo(scriptText) {
+            const lines = scriptText.split("\n");
+            let id = null;
+            let label = null;
+
+            for (const line of lines) {
+                if (line.startsWith("//@id")) {
+                    id = line.replace("//@id", "").trim();
+                }
+                if (line.startsWith("//@label")) {
+                    label = line.replace("//@label", "").trim();
+                }
+            }
+            return { id, label };
+        }
+
+        /* ==========================================================
+           //@id と同名の div を生成
+           - 見やすいようにラッパー div の中に入れる
+           - 可視化ユニット側が使うのは inner の <div id="id">
+           ========================================================== */
+        function createVizContainer(id, label) {
+            const root = document.getElementById("root");
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "viz-wrapper";
+
+            const title = document.createElement("h2");
+            title.textContent = label || id;
+
+            const targetDiv = document.createElement("div");
+            targetDiv.id = id;  // ★ 可視化ユニット側が document.getElementById(id) で取る div
+
+            wrapper.appendChild(title);
+            wrapper.appendChild(targetDiv);
+            root.appendChild(wrapper);
+        }
+
+        /* ==========================================================
+           読み込む可視化ユニットファイル一覧
+           （必要に応じてここに追加）
+           ========================================================== */
+        const VIZ_SCRIPTS = [
+            "sample_d3.js",
+        ];
+
+        /* ==========================================================
+           メイン処理
+           ========================================================== */
+        (async function () {
+            for (const file of VIZ_SCRIPTS) {
+                const scriptText = await loadVisualizationScript(file);
+                const meta = extractMetaInfo(scriptText);
+
+                if (!meta.id) {
+                    console.warn(`${file} には //@id がありません。スキップします。`);
+                    continue;
+                }
+
+                // id と同じ名前の div を作成
+                createVizContainer(meta.id, meta.label);
+
+                // 実際の可視化ロジックを実行
+                const scriptEl = document.createElement("script");
+                scriptEl.textContent = scriptText;
+                document.body.appendChild(scriptEl);
+            }
+        })();
+    </script>
+
+</body>
+
+</html>
