@@ -1,5 +1,5 @@
 jQuery(function ($) {
-    ("#submit-range").on('click', function () {
+    $("#submit-range").on('click', function () {
         const selectedFiles = $("#js-file").val();
         const selectedDataIds = $('#js-file option:selected').map(function () {
             return $(this).data('id');
