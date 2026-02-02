@@ -1,7 +1,7 @@
 // logjson.js
 // - URL から id (courseid) を取得
-// - select の値だけ渡して logjson.php を呼び出す
-// グローバル: window.blockListAllCoursesApi に公開
+// - select の値だけ渡して fetchdata.php を呼び出す
+// グローバル: window.blockVizPortApi に公開
 
 (function (window) {
     'use strict';
@@ -12,9 +12,9 @@
         M.cfg &&
         typeof M.cfg.wwwroot === 'string';
 
-    /** logjson.php のパス（Moodle時のみ使用） */
+    /** fectchdata.php のパス（Moodle時のみ使用） */
     var BASE_URL = IS_MOODLE
-        ? M.cfg.wwwroot + "/blocks/vizport/logjson.php"
+        ? M.cfg.wwwroot + "/blocks/vizport/fetchdata.php"
         : null;
 
     /**
@@ -55,7 +55,7 @@
     }
 
     /**
-     * select の値に応じて、logjson.php に渡すクエリを組み立てる
+     * select の値に応じて、fetchdata.php に渡すクエリを組み立てる
      *  - id は URL から自動で付与
      *  - select=1 or 5 のときだけ start/end も URL から付ける（あれば）
      *
@@ -387,7 +387,7 @@
     // ==== ここから外部に出す API ====
     // グローバルに 1つだけ namespaced オブジェクトを作る
     window.blockVizPortApi = {
-        // 本番用: select の値だけ渡して logjson.php を叩く
+        // 本番用: select の値だけ渡して fetchdata.php を叩く
         fetchLogJson: fetchLogJson
     };
 

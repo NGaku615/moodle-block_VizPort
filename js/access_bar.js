@@ -99,12 +99,6 @@
 
     // ===== メイン処理 =====
     (async function main() {
-        const url = new URL(window.location.href);
-        const course = url.searchParams.get('id');
-
-        const startUnix = document.getElementById('start-unix')?.value;
-        const endUnix = document.getElementById('end-unix')?.value;
-
         // キャンバスを準備
         const container = document.getElementById('access_bar');
         if (!container) {
@@ -119,10 +113,10 @@
         container.appendChild(canvas);
 
         // データ取得
-        const endpoint = `${M.cfg.wwwroot}/blocks/vizport/logjson.php?select=5&id=${encodeURIComponent(course)}&start=${encodeURIComponent(startUnix)}&end=${encodeURIComponent(endUnix)}`;
+        const endpoint = blockVizPortApi.fetchLogJson(5);
         let srcData;
         try {
-            srcData = await d3.json(endpoint);
+            srcData = endpoint;
         } catch (e) {
             console.error('データ取得に失敗しました: ', e);
             renderBar(canvas, ['データ取得エラー'], [0], 'コンテンツ別アクセス数');
@@ -130,7 +124,8 @@
         }
 
         // 集計 → 上位N件
-        const counts = aggregateCounts(srcData);
+        console.log('取得データ', endpoint);
+        const counts = aggregateCounts(endpoint);
         const TOP_N = 20; // 表示件数を調整したい場合はここを変更
         const { labels, values } = toSeries(counts, TOP_N);
 
