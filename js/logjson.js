@@ -74,8 +74,8 @@
             params.push('id=' + encodeURIComponent(String(courseid)));
         }
 
-        // select=1 or 5 のときだけ start/end を付ける
-        if (select === 1 || select === 5) {
+        // select=1 or 4 のときだけ start/end を付ける
+        if (select === 1 || select === 4) {
 
             let start = null;
             let end = null;

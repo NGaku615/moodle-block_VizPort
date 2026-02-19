@@ -52,6 +52,38 @@ foreach ($roles as $role) {
     $roles_shortname[] = $role->shortname;
 }
 
+// 教員・管理系ロール判定（これらなら匿名化しない）
+$privilegedroles = ['editingteacher', 'teacher', 'manager', 'admin'];
+$isprivileged = false;
+foreach ($roles_shortname as $r) {
+    if (in_array($r, $privilegedroles, true)) {
+        $isprivileged = true;
+        break;
+    }
+}
+
+function make_userid_remapper() {
+    $map = [];
+    $next = 1;
+
+    return function($orig) use (&$map, &$next) {
+        $k = (string)$orig;
+        if (!isset($map[$k])) {
+            $map[$k] = $next;
+            $next++;
+        }
+        return $map[$k];
+    };
+}
+
+if ($select == 0) {
+    respond_json([
+        'userid' => (int)$USER->id,
+        'courseid' => (int)$courseid,
+        'roles' => $roles_shortname,
+    ]);
+}
+
 if($select == 1){
   $start = optional_param('start', null, PARAM_INT);
   $end = optional_param('end', null, PARAM_INT);
@@ -69,6 +101,15 @@ if($select == 1){
       'endtime'    => $end,
     ];
   $sectionLogs = $DB->get_records_sql($sql, $params);
+
+  if (!$isprivileged) {
+    $remap = make_userid_remapper();
+    foreach ($sectionLogs as $k => $log) {
+        if (isset($log->userid)) {
+            $sectionLogs[$k]->userid = $remap($log->userid);
+        }
+    }
+  }
   
   $json = json_encode($sectionLogs);
 
@@ -130,45 +171,23 @@ if($select == 1){
   }
 
   $logs_by_week = report_visualizing_get_logs_split_by_week_mon_to_sun($courseid);
+
+  if (!$isprivileged) {
+    $remap = make_userid_remapper();
+    foreach ($logs_by_week as $week => $arr) {
+        foreach ($arr as $i => $log) {
+            if (isset($log->userid)) {
+                $logs_by_week[$week][$i]->userid = $remap($log->userid);
+            }
+        }
+    }
+  }
+
   $json = json_encode($logs_by_week, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
   header('Content-Type: application/json; charset=utf-8');
   echo $json;
-  //3と４の違いを精査してどちらかを残すものとする
 } elseif($select == 3){//Get quiz grades grouped by quiz
-
-  $sql_quiz = "SELECT *
-          FROM {quiz} WHERE course = :courseid";
-  $params_quiz = [
-    'courseid' => $courseid
-  ];
-
-  $alllogs = $DB->get_records_sql($sql_quiz, $params_quiz);
-
-  $quiz_ids = [];
-  foreach($alllogs as $log){
-    $quiz_ids[] = $log->id;
-  }
-
-  $sql_quiz_grade = "SELECT *
-          FROM {quiz_grades}
-          WHERE quiz = :quizid";
-
-  $quiz_grades = [];
-
-  foreach($quiz_ids as $id){
-    $params_quiz_grade = [
-      'quizid' => $id
-    ];
-    $grades = $DB->get_records_sql($sql_quiz_grade, $params_quiz_grade);
-    $quiz_grades[$id] = $grades;
-  }
-
-  $json = json_encode($quiz_grades, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-
-  header('Content-Type: application/json; charset=utf-8');
-  echo $json;
-} elseif($select == 4){//Get quiz grades grouped by quiz
 
   $quizzes = $DB->get_records('quiz', ['course' => $courseid], '', 'id,name');
 
@@ -194,11 +213,24 @@ if($select == 1){
     ];
   }
 
+  if (!$isprivileged) {
+    $remap = make_userid_remapper();
+    foreach ($quiz_grades as $quizid => $bundle) {
+        if (!empty($bundle['grades'])) {
+            foreach ($bundle['grades'] as $i => $row) {
+                if (isset($row['userid'])) {
+                    $quiz_grades[$quizid]['grades'][$i]['userid'] = $remap($row['userid']);
+                }
+            }
+        }
+    }
+  }
+
   $json = json_encode($quiz_grades, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
   header('Content-Type: application/json; charset=utf-8');
   echo $json;
-}elseif($select == 5){ //モジュールごとにユーザのアクセス履歴を取得
+}elseif($select == 4){ //モジュールごとにユーザのアクセス履歴を取得
   $starttime = optional_param('start', null, PARAM_INT);
   $endtime = optional_param('end', null, PARAM_INT);
   $sql_section = "SELECT id,userid,other,timecreated FROM {logstore_standard_log} AS lsl WHERE lsl.courseid = $courseid AND lsl.contextlevel = 50 AND lsl.timecreated >= $starttime AND lsl.timecreated < $endtime";
@@ -263,11 +295,23 @@ if($select == 1){
         'timecreated' => $item['timecreated']
     );
   }
+
+  if (!$isprivileged) {
+    $remap = make_userid_remapper();
+    foreach ($log_sort as $modname => $items) {
+        foreach ($items as $i => $row) {
+            if (isset($row['userid'])) {
+                $log_sort[$modname][$i]['userid'] = $remap($row['userid']);
+            }
+        }
+    }
+  }
+  
   $json = json_encode($log_sort, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
   header('Content-Type: application/json; charset=utf-8');
   echo $json;
-}elseif ($select == 6) { // コースに登録されている学生一覧を取得
+}elseif ($select == 5) { // コースに登録されている学生一覧を取得
   $now = time();
 
   $sql = "
@@ -297,9 +341,19 @@ if($select == 1){
 
   $students = $DB->get_records_sql($sql, $params);
 
+  $students = array_values($students);
+  if (!$isprivileged) {
+    $remap = make_userid_remapper();
+    foreach ($students as $i => $u) {
+        if (isset($u->id)) {
+            $students[$i]->id = $remap($u->id);
+        }
+    }
+}
+
   header('Content-Type: application/json; charset=utf-8');
   echo json_encode(array_values($students), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-}elseif ($select == 7) { // 小テストごとの提出済み人数
+}elseif ($select == 6) { // 小テストごとの提出済み人数
   $sql = "
     SELECT q.id AS quizid, q.name AS quizname, COUNT(DISTINCT qa.userid) AS finished_user_count
     FROM {quiz} q
@@ -313,7 +367,7 @@ if($select == 1){
 
   header('Content-Type: application/json; charset=utf-8');
   echo json_encode(array_values($records), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-}elseif ($select == 8) { // 課題ごとの提出済み学生数
+}elseif ($select == 7) { // 課題ごとの提出済み学生数
   $sql = "
     SELECT a.id AS assignid, a.name AS assignname, COUNT(DISTINCT s.userid) AS submitted_user_count
     FROM {assign} a

@@ -5,9 +5,9 @@
 
     // 文字列としてURLを取得する。
 
-    const log = blockVizPortApi.fetchLogJson(8);
+    const log = blockVizPortApi.fetchLogJson(5);
 
-    blockListAllCoursesApi.fetchLogJson(0).then(function (res) {
+    blockVizPortApi.fetchLogJson(0).then(function (res) {
         console.log("USER ROLES:", res.roles);
     });
 
