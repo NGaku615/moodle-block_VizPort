@@ -113,7 +113,7 @@
         container.appendChild(canvas);
 
         // データ取得
-        const endpoint = blockVizPortApi.fetchLogJson(5);
+        const endpoint = blockVizPortApi.fetchLogJson(4);
         let srcData;
         try {
             srcData = endpoint;
