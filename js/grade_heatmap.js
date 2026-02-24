@@ -9,13 +9,10 @@
     const CELL_W = 26;
     const CELL_PAD = 1;
 
-    // URLから course id 取得
-    const course = new URL(window.location.href).searchParams.get("id");
-
-    // データ取得（固定キー: { [quizid]: { quizname, grades:[{userid, grade}, ...] } }）
-    d3.json(`${M.cfg.wwwroot}/blocks/listallcourses/logjson.php?select=4&id=${course}`)
-        .then(json => renderHeatmap(normalize(json)))
-        .catch(err => console.error("成績データの取得に失敗:", err));
+window.blockVizPortApi
+  .fetchLogJson(3) // ※このままだと id=course を渡せない
+  .then(json => renderHeatmap(normalize(json)))
+  .catch(err => console.error("成績データの取得に失敗:", err));
 
     // ---- 正規化 ----
     function normalize(obj) {
